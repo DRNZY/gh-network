@@ -1,8 +1,8 @@
 # gh-network
 
-High-performance, async GitHub developer networking and community discovery engine written in Rust.
+A command-line tool written in Rust for discovering and networking with developers on GitHub.
 
-```
+```text
 ==================================================
   GitHub Profile:  @DRNZY
   Followers:     8
@@ -17,11 +17,11 @@ High-performance, async GitHub developer networking and community discovery engi
 
 ## Features
 
-- **Async Multi-Repo Harvesting:** Scrapes stargazers, contributors, and active developers across 30+ core ecosystem repositories concurrently using Tokio.
-- **Candidate Pool Caching:** Persistent JSON storage in `~/.config/github/candidate_pool.json` prevents redundant API calls.
-- **Shadow-Throttle Detection:** Probes mutation status with `GET /user/following/:user` to safely detect GitHub's daily mutation limits without burning quota.
-- **Case-Insensitive HTTP Header Parsing:** Native `reqwest::header::HeaderMap` for real-time `X-RateLimit-Remaining` tracking.
-- **Paced Follow Sequence:** Randomized human-like jitter intervals (850ms - 1350ms) to respect GitHub rate limits.
+- Scrapes stargazers, contributors, and active developers across repositories concurrently using Tokio.
+- Caches candidate profiles in `~/.config/github/candidate_pool.json` to prevent redundant API queries.
+- Detects daily mutation limits by verifying follow status via `GET /user/following/:user`.
+- Tracks `X-RateLimit-Remaining` directly from response headers.
+- Adds randomized delays between requests to stay within rate limits.
 
 ## Installation
 
@@ -36,13 +36,13 @@ cp target/release/gh-network ~/.local/bin/gh-network
 # View live profile metrics and rate limit budget
 gh-network status
 
-# Asynchronously harvest candidates across ecosystems
+# Harvest candidates across target repositories
 gh-network harvest
 
-# Follow a batch of candidates from the pool
+# Follow candidates from the local pool
 gh-network follow --max 100
 
-# Reconcile local cache with live GitHub following list
+# Reconcile local cache with current GitHub following list
 gh-network sync
 ```
 
