@@ -74,6 +74,13 @@ enum Commands {
     },
     /// Sync local cache with live GitHub following list
     Sync,
+    /// Run as an autonomous background daemon executing follow cycles every 24h
+    Daemon {
+        #[arg(short, long, default_value_t = 24)]
+        interval_hours: u64,
+        #[arg(short, long, default_value_t = 350)]
+        batch: usize,
+    },
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -229,6 +236,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Harvest => harvest_pool(&client).await?,
         Commands::Follow { max } => follow_pipeline(&client, max).await?,
         Commands::Sync => sync_following(&client).await?,
+        Commands::Daemon { interval_hours, batch } => run_daemon(&client, interval_hours, batch).await?,
     }
 
     Ok(())
@@ -452,5 +460,49 @@ async fn sync_following(client: &reqwest::Client) -> Result<(), Box<dyn std::err
     );
 
     Ok(())
+}
+
+async fn run_daemon(
+    client: &reqwest::Client,
+    interval_hours: u64,
+    batch_size: usize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "{} Starting autonomous 24h follow daemon (Interval: {}h, Batch: {})...",
+        "Daemon:".cyan().bold(),
+        interval_hours.to_string().yellow(),
+        batch_size.to_string().green()
+    );
+
+    loop {
+        let pool = load_pool();
+        let cache = load_cache();
+        let available_count = pool.iter().filter(|u| !cache.contains(*u)).count();
+
+        // If candidate pool is low, automatically harvest new developers
+        if available_count < batch_size * 2 {
+            println!(
+                "{} Candidate pool low ({} remaining). Harvesting fresh targets...",
+                "Daemon:".cyan().bold(),
+                available_count.to_string().yellow()
+            );
+            let _ = harvest_pool(client).await;
+        }
+
+        println!(
+            "{} Executing scheduled daily follow cycle...",
+            "Daemon:".green().bold()
+        );
+        let _ = follow_pipeline(client, batch_size).await;
+
+        let sleep_duration = Duration::from_secs(interval_hours * 3600);
+        println!(
+            "{} Cycle complete. Sleeping for {}h until next automated execution.",
+            "Daemon:".cyan().bold(),
+            interval_hours.to_string().yellow()
+        );
+
+        tokio::time::sleep(sleep_duration).await;
+    }
 }
 
